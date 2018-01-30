@@ -1,0 +1,323 @@
+package crop.input;
+
+import java.awt.*;
+import java.awt.event.*;
+import java.awt.image.*;
+import java.util.ArrayList;
+
+import javax.swing.*;
+
+
+import crop.tools.RectTool;
+import crop.tools.ToolButton;
+import java.io.File;
+import java.io.IOException;
+import java.util.logging.Level;
+import java.util.logging.Logger;
+import javax.imageio.ImageIO;
+
+
+public class Crop extends JFrame implements Runnable {
+   
+   private BufferStrategy bs;
+   private volatile boolean running;
+   private Thread gameThread;
+   private Canvas canvas;
+   private MouseInput mouse;
+   private KeyboardInput keyboard;
+   private Point point = new Point(0,0);
+   private Point line = new Point (0,0);
+   private ArrayList<Point> lines = new ArrayList<Point>();
+   private ArrayList<Point> lines1 = new ArrayList<Point>();
+   private ArrayList<Point> lines2 = new ArrayList<Point>();
+   private ArrayList<Point> lines3 = new ArrayList<Point>();
+   private boolean drawingLine;
+   private boolean justPressed = false;
+   private int firstPress = 0;
+   private int lineToolCount = 3;
+   private int toolCount = -1;
+   private ToolButton button = new ToolButton();
+   private RectTool rectTool = new RectTool();
+   private Point A = new Point(10,10);
+   private Point B = new Point(50,10);
+   private Point C = new Point(50,50);
+   private Point D = new Point(10,50);
+   
+   private Color[] COLORS = { Color.BLACK, Color.GREEN, Color.RED, Color.BLUE };
+   private int colorIndex= 0;
+   
+   private BufferedImage bi;
+   private int height;
+   private int width;
+
+   
+   public Crop() throws IOException {
+        this.bi = ImageIO.read(new File("beach.jpg"));
+        this.width = bi.getWidth();
+        this.height = bi.getHeight();
+	   
+   }
+   
+   protected void createAndShowGUI() {
+      canvas = new Canvas();
+      canvas.setSize( width, height );
+      canvas.setBackground( Color.WHITE );
+      canvas.setIgnoreRepaint( true );
+      getContentPane().add( canvas );
+      setTitle( "Paint" );
+      setIgnoreRepaint( true );
+      pack();
+
+      keyboard = new KeyboardInput();
+      canvas.addKeyListener( keyboard );
+
+      mouse = new MouseInput( canvas );
+      canvas.addMouseListener( mouse );
+      canvas.addMouseMotionListener( mouse );
+      canvas.addMouseWheelListener( mouse );
+      
+      setVisible( true );
+      
+      canvas.createBufferStrategy( 2 );
+      bs = canvas.getBufferStrategy();
+      canvas.requestFocus();
+      
+      gameThread = new Thread( this );
+      gameThread.start();
+   }
+   public void run() {
+      running = true;
+      while( running ) {
+         gameLoop();
+      }
+   }
+   
+   private void gameLoop() {
+      processInput();
+      renderFrame();
+      sleep( 10L );
+   }
+
+   private void renderFrame() {
+      do {
+         do {
+            Graphics g = null;
+            try {
+               g = bs.getDrawGraphics();
+               g.clearRect( 0, 0, getWidth(), getHeight() );
+               render( g );
+            } finally {
+               if( g != null ) {
+                  g.dispose();
+               }
+            }
+         } while( bs.contentsRestored() );
+         bs.show();
+      } while( bs.contentsLost() );
+   }
+   
+   private void sleep( long sleep ) {
+      try {
+         Thread.sleep( sleep );
+      } catch( InterruptedException ex ) { }
+   }
+   
+   private void processInput() {
+      
+      keyboard.poll();
+      mouse.poll();
+      
+      disableCursor();
+      
+      Point p = mouse.getPosition();
+      if( mouse.isRelative() ) {
+         point.x += p.x;
+         point.y += p.y;
+      } else {
+         point.x = p.x;
+         point.y = p.y;
+      }
+      Point P = mouse.getPosition();
+      if (mouse.getNotches() > 0) {			//changing tool based on scrolling
+    	  if (toolCount > 3) {
+    		  toolCount = -1;  
+    	  }
+    	  else {
+    		  toolCount = toolCount + 1;
+    	  }
+      }
+      else {
+      }
+      if (mouse.buttonDownOnce(MouseEvent.BUTTON1)) {
+    	  for (int x = 0; x < 7; x++) {
+    		  if (button.isClicked(A, B, C, D, P)) {	//finding if a tool has been clicked
+    			  if (!(toolCount == x)) {
+    				  toolCount = x;					//setting toolCount to the corresponding button
+    				  justPressed = true;
+    			  }
+    		  }
+    		  A.y += 50;	//changing what box is being checked
+    		  B.y += 50;
+    		  C.y += 50;
+    		  D.y += 50;
+    	  }
+      }
+      //rectangletool
+      if (toolCount == 1 && justPressed == false) {
+          if (firstPress == 2) {
+              if (mouse.buttonDownOnce(MouseEvent.BUTTON1)) {
+                  line = mouse.getPosition();
+                  lines1.add(null);
+                  firstPress = 0;
+              }
+          }
+          if (firstPress != 2) {
+              if (mouse.buttonDownOnce(MouseEvent.BUTTON1)) {
+                  line = mouse.getPosition();
+                  lines1.add(line);
+                  firstPress++;
+              }
+          }
+      }
+      //clear
+      if( keyboard.keyDownOnce( KeyEvent.VK_C ) ) {
+    	  lines.clear();
+    	  lineToolCount = 2;	//setting when a null is added for line tool back to 2
+    	  lines1.clear();
+    	  lines2.clear();
+    	  lines3.clear();
+      }
+      //reseting location of button back to lineTool and if a button was just pressed
+      justPressed = false;
+      A.setLocation(10, 10);
+      B.setLocation(50, 10);
+      C.setLocation(50, 50);
+      D.setLocation(10, 50);
+   }
+
+private void render( Graphics g ) {
+    
+    g.drawImage(bi, 0, 0, this);
+	Point p3 = new Point (mouse.getPosition());
+        
+        if (mouse.getNotches() < 0) {
+            colorIndex += mouse.getNotches();
+        }
+  	Color color = COLORS[ Math.abs(colorIndex % 4) ];
+        g.setColor( color );
+  	g.drawLine( point.x, point.y, point.x, point.y+10 );
+  	g.drawLine( point.x, point.y, point.x+10, point.y );
+  	g.drawLine( point.x, point.y, point.x-10, point.y );
+  	g.drawLine( point.x, point.y, point.x, point.y-10 );
+        
+	//linetool
+	//lineTool.displayLine(lines, p3, g, toolCount);
+	//rectangletool
+	rectTool.displayRect(lines1, p3, g, toolCount, firstPress);
+	//polylinetool
+	//polyLineTool.displayPolyLine(lines2, p3, g, toolCount);
+	//FreeDraw
+	//freeDrawTool.displayLine(lines3, g);
+	//menu
+        
+        
+	g.setColor(Color.WHITE);
+	g.fillRect(1, 1, 59, 409);
+	g.setColor(Color.GRAY);
+	g.drawRect(0, 0, 60, 410);
+	g.drawRect(10, 10, 40, 40);
+	g.drawLine(10, 50, 50, 10);
+	g.drawRect(10, 60, 40, 40);
+	g.drawRect(15, 65, 30, 30);
+	g.drawRect(10, 110, 40, 40);
+	g.drawLine(10, 150, 20, 130);
+	g.drawLine(20, 130, 35, 140);
+	g.drawLine(35, 140, 50, 110);
+	g.drawRect(10, 160, 40, 40);
+	g.drawLine(15, 195, 15, 165);
+	g.drawLine(15, 180, 30, 180);
+	g.drawLine(15, 165, 40, 165);
+	//linebox
+	if (toolCount == 0) {
+		g.setColor(Color.BLACK);
+		g.drawRect(10, 10, 40, 40);
+		g.drawLine(10, 50, 50, 10);
+	}
+	//rectBox
+	if (toolCount == 1) {
+		g.setColor(Color.BLACK);
+		g.drawRect(10, 60, 40, 40);
+		g.drawRect(15, 65, 30, 30);
+	}
+	//polylinebox
+	if (toolCount == 2) {
+		g.setColor(Color.BLACK);
+		g.drawRect(10, 110, 40, 40);
+		g.drawLine(10, 150, 20, 130);
+		g.drawLine(20, 130, 35, 140);
+		g.drawLine(35, 140, 50, 110);
+	}
+	//freedrawbox
+	if (toolCount == 3) {
+		g.setColor(Color.BLACK);
+		g.drawRect(10, 160, 40, 40);
+		g.drawLine(15, 195, 15, 165);
+		g.drawLine(15, 180, 30, 180);
+		g.drawLine(15, 165, 40, 165);
+	}
+	//bluebox
+	g.setColor(Color.BLUE);
+	g.fillRect(10, 210, 40, 40);
+	//redbox
+	g.setColor(Color.RED);
+	g.fillRect(10, 260, 40, 40);
+	//greenbox
+	g.setColor(Color.GREEN);
+	g.fillRect(10, 310, 40, 40);
+	//blackbox
+	g.setColor(Color.BLACK);
+	g.fillRect(10, 360, 40, 40);
+	//cursor
+        
+        g.setColor( color );
+  	g.drawLine( point.x, point.y, point.x, point.y+10 );
+  	g.drawLine( point.x, point.y, point.x+10, point.y );
+  	g.drawLine( point.x, point.y, point.x-10, point.y );
+  	g.drawLine( point.x, point.y, point.x, point.y-10 );
+        
+}
+   
+   private void disableCursor() {
+      Toolkit tk = Toolkit.getDefaultToolkit();
+      Image image = tk.createImage( "" );
+      Point point = new Point( 0, 0 );
+      String name = "CanBeAnything";
+      Cursor cursor = tk.createCustomCursor( image, point, name );
+      setCursor( cursor );
+   }
+   
+   protected void onWindowClosing() {
+      try {
+         running = false;
+         gameThread.join();
+      } catch( InterruptedException e ) {
+         e.printStackTrace();
+      }
+      System.exit( 0 );
+   }
+   
+   public static void main( String[] args ) throws IOException {
+      final Crop app = new Crop();
+      app.addWindowListener( new WindowAdapter() {
+         public void windowClosing( WindowEvent e ) {
+            app.onWindowClosing();
+         }
+      });
+      SwingUtilities.invokeLater( new Runnable() {
+         public void run() {
+            app.createAndShowGUI();
+         }
+      });
+   }
+
+}

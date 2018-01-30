@@ -1,16 +1,16 @@
-package javagames.tools;
+package crop.tools;
 
 import java.awt.*;
 import java.util.ArrayList;
 
 public class RectTool {
 	
-	public Graphics displayRect (ArrayList<Point> lines, Point line, Graphics g, int toolCount) {
+	public Graphics displayRect (ArrayList<Point> lines, Point line, Graphics g, int toolCount, int firstPress) {
 		Point p1 = new Point (0,0);
 		Point p2 = new Point (0,0);
 		Point p3 = line;
 		Point p4 = new Point (0,0);
-		if (toolCount == 1) {
+		if (toolCount == 1 && firstPress != 2) {
 			if ((lines.size() > 0) && lines.get(lines.size()-1) != null) {
 				p4 = (lines.get(lines.size()-1));
 				g.drawRect(p4.x, p4.y, p3.x-p4.x, p3.y-p4.y);

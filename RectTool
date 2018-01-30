@@ -1,0 +1,28 @@
+package javagames.tools;
+
+import java.awt.*;
+import java.util.ArrayList;
+
+public class RectTool {
+	
+	public Graphics displayRect (ArrayList<Point> lines, Point line, Graphics g, int toolCount) {
+		Point p1 = new Point (0,0);
+		Point p2 = new Point (0,0);
+		Point p3 = line;
+		Point p4 = new Point (0,0);
+		if (toolCount == 1) {
+			if ((lines.size() > 0) && lines.get(lines.size()-1) != null) {
+				p4 = (lines.get(lines.size()-1));
+				g.drawRect(p4.x, p4.y, p3.x-p4.x, p3.y-p4.y);
+			}
+		}
+		for (int x = 0; x < lines.size() - 1; ++x) {
+			if (!(lines.get(x) == null || lines.get(x+1) == null)) {
+				p1 = lines.get(x);
+				p2 = lines.get(x+1);
+				g.drawRect(p1.x, p1.y, p2.x-p1.x, p2.y-p1.y);
+			}
+		}
+		return g;
+	}
+}
